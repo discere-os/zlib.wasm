@@ -439,8 +439,9 @@ jobs:
             r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/main/zlib-release.js --file=install/wasm/zlib-release.js
             r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/main/zlib-release.wasm --file=install/wasm/zlib-release.wasm
             r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/package.json --file=package.json
-            
-            echo "✅ Snapshot ${{ steps.version.outputs.VERSION }} deployed to Cloudflare R2"
+
+      - name: Log deployment success
+        run: echo "✅ Snapshot ${{ steps.version.outputs.VERSION }} deployed to Cloudflare R2"
       
       - name: Verify snapshot deployment
         run: |

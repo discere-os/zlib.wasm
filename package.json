@@ -17,12 +17,12 @@
       "import": "./install/wasm/zlib-side.wasm",
       "types": "./dist/lib/types.d.ts"
     },
-    "./test": {
+    "./main": {
       "import": "./install/wasm/zlib-release.js",
       "types": "./dist/lib/types.d.ts"
     },
-    "./optimized": {
-      "import": "./install/wasm/zlib-optimized.js",
+    "./fallback": {
+      "import": "./install/wasm/zlib-fallback.js",
       "types": "./dist/lib/types.d.ts"
     }
   },
@@ -36,6 +36,7 @@
     "type-check": "tsc --project . --noEmit --skipLibCheck",
     "demo": "node dist/demo.js",
     "benchmark": "node dist/benchmark.js",
+    "benchmark:simd": "node dist/simd_benchmark.js",
     "clean": "./build-dual.sh clean && rm -rf node_modules/.vite",
     "prepublishOnly": "npm run build && npm run test"
   },

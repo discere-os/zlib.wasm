@@ -46,11 +46,12 @@ build_zlib_side_module() {
     mkdir -p "${BUILD_DIR}-side"
     cd "${BUILD_DIR}-side"
 
-    # Core zlib sources
+    # Core zlib sources + SIMD compression
     ZLIB_SOURCES="../adler32.c ../compress.c ../crc32.c ../deflate.c ../infback.c ../inffast.c ../inflate.c ../inftrees.c ../trees.c ../uncompr.c ../zutil.c"
+    SIMD_SOURCES="../src/zlib_simd_compression.c ../src/zlib_simd_optimized.c"
 
-    # SIDE_MODULE optimized build
-    emcc ${ZLIB_SOURCES} ../src/wasm_module_side.c \
+    # SIDE_MODULE optimized build with SIMD acceleration
+    emcc ${ZLIB_SOURCES} ${SIMD_SOURCES} ../src/wasm_module_side.c \
         -I.. \
         -DHAVE_UNISTD_H=0 \
         -O3 \
@@ -71,11 +72,12 @@ build_zlib_main_module() {
     mkdir -p "${BUILD_DIR}-main-release"
     cd "${BUILD_DIR}-main-release"
 
-    # Core zlib sources
+    # Core zlib sources + SIMD compression
     ZLIB_SOURCES="../adler32.c ../compress.c ../crc32.c ../deflate.c ../infback.c ../inffast.c ../inflate.c ../inftrees.c ../trees.c ../uncompr.c ../zutil.c"
+    SIMD_SOURCES="../src/zlib_simd_compression.c ../src/zlib_simd_optimized.c"
 
-    # MAIN_MODULE build with JS glue  
-    emcc ${ZLIB_SOURCES} ../src/wasm_module.c \
+    # MAIN_MODULE build with full optimizations + SIMD (DEFAULT)
+    emcc ${ZLIB_SOURCES} ${SIMD_SOURCES} ../src/wasm_module.c \
         -I.. \
         -DHAVE_UNISTD_H=0 \
         -O3 \
@@ -84,23 +86,25 @@ build_zlib_main_module() {
         -sWASM=1 \
         -sMODULARIZE=1 \
         -sEXPORT_NAME="ZlibModule" \
-        -sEXPORTED_FUNCTIONS='["_zlib_compress_buffer","_zlib_decompress_buffer","_zlib_crc32","_zlib_adler32","_zlib_compress_bound","_zlib_get_version","_malloc","_free"]' \
+        -sEXPORTED_FUNCTIONS='["_zlib_compress_buffer","_zlib_decompress_buffer","_zlib_crc32","_zlib_adler32","_zlib_compress_bound","_zlib_get_version","_zlib_compress_simd","_zlib_crc32_simd_optimized","_zlib_benchmark_simd_compression","_zlib_simd_capabilities","_zlib_simd_analysis","_zlib_slide_hash_simd","_zlib_compare256_simd","_zlib_adler32_simd","_zlib_longest_match_simd","_zlib_chunkmemset_simd","_zlib_compress_simd_full","_zlib_crc32_simd_enhanced","_zlib_simd_capabilities_enhanced","_zlib_simd_performance_analysis","_malloc","_free"]' \
         -sEXPORTED_RUNTIME_METHODS='["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP8","HEAP32"]' \
+        -sASSERTIONS=0 \
+        -sNO_EXIT_RUNTIME=1 \
         -o zlib-release.js
 
-    # Also build optimized version for tests
+    # Also build fallback version for compatibility (less optimized, no SIMD)
     emcc ${ZLIB_SOURCES} ../src/wasm_module.c \
         -I.. \
         -DHAVE_UNISTD_H=0 \
-        -O3 \
-        -flto \
-        -msimd128 \
+        -O2 \
         -sWASM=1 \
         -sMODULARIZE=1 \
         -sEXPORT_NAME="ZlibModule" \
         -sEXPORTED_FUNCTIONS='["_zlib_compress_buffer","_zlib_decompress_buffer","_zlib_crc32","_zlib_adler32","_zlib_compress_bound","_zlib_get_version","_malloc","_free"]' \
         -sEXPORTED_RUNTIME_METHODS='["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP8","HEAP32"]' \
-        -o zlib-optimized.js
+        -sALLOW_MEMORY_GROWTH=1 \
+        -sASSERTIONS=1 \
+        -o zlib-fallback.js
 
     log_success "MAIN_MODULE build completed: $(pwd)/zlib-release.js"
     cd ..
@@ -125,16 +129,24 @@ install_artifacts() {
         log_success "Installed MAIN_MODULE: ${INSTALL_PREFIX}/wasm/zlib-release.js"
     fi
     
-    if [ -f "${BUILD_DIR}-main-release/zlib-optimized.js" ]; then
-        cp "${BUILD_DIR}-main-release/zlib-optimized.js" "${INSTALL_PREFIX}/wasm/"
-        cp "${BUILD_DIR}-main-release/zlib-optimized.wasm" "${INSTALL_PREFIX}/wasm/"
-        log_success "Installed OPTIMIZED_MODULE: ${INSTALL_PREFIX}/wasm/zlib-optimized.js"
+    if [ -f "${BUILD_DIR}-main-release/zlib-fallback.js" ]; then
+        cp "${BUILD_DIR}-main-release/zlib-fallback.js" "${INSTALL_PREFIX}/wasm/"
+        cp "${BUILD_DIR}-main-release/zlib-fallback.wasm" "${INSTALL_PREFIX}/wasm/"
+        log_success "Installed FALLBACK_MODULE: ${INSTALL_PREFIX}/wasm/zlib-fallback.js"
     fi
     
     # Copy headers
     cp zlib.h "${INSTALL_PREFIX}/include/"
     cp zconf.h "${INSTALL_PREFIX}/include/"
-    
+
+    # Also copy to build/ directory for compatibility with existing tests
+    mkdir -p build/
+    if [ -f "${INSTALL_PREFIX}/wasm/zlib-release.js" ]; then
+        cp "${INSTALL_PREFIX}/wasm/zlib-release.js" build/zlib-optimized.js
+        cp "${INSTALL_PREFIX}/wasm/zlib-release.wasm" build/zlib-optimized.wasm
+        log_success "Copied optimized build to build/ for test compatibility"
+    fi
+
     log_success "Installation complete in ${INSTALL_PREFIX}/"
 }
 

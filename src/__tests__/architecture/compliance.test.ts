@@ -32,9 +32,9 @@ describe('zlib.wasm Architecture Compliance', () => {
       expect(packageJson.exports['./side'].import).toBe('./install/wasm/zlib-side.wasm')
     })
 
-    it('should export test MAIN_MODULE path', () => {
-      expect(packageJson.exports['./test']).toBeDefined()
-      expect(packageJson.exports['./test'].import).toBe('./install/wasm/zlib-release.js')
+    it('should export main MAIN_MODULE path', () => {
+      expect(packageJson.exports['./main']).toBeDefined()
+      expect(packageJson.exports['./main'].import).toBe('./install/wasm/zlib-release.js')
     })
 
     it('should have proper CDN configuration', () => {
@@ -61,12 +61,12 @@ describe('zlib.wasm Architecture Compliance', () => {
       expect(wasmExists).toBe(true)
     })
 
-    it('should have optimized build artifacts for testing', async () => {
-      const optimizedJsPath = path.join(projectRoot, 'install/wasm/zlib-optimized.js')
-      const optimizedWasmPath = path.join(projectRoot, 'install/wasm/zlib-optimized.wasm')
+    it('should have fallback build artifacts for compatibility', async () => {
+      const fallbackJsPath = path.join(projectRoot, 'install/wasm/zlib-fallback.js')
+      const fallbackWasmPath = path.join(projectRoot, 'install/wasm/zlib-fallback.wasm')
       
-      const jsExists = await fs.access(optimizedJsPath).then(() => true).catch(() => false)
-      const wasmExists = await fs.access(optimizedWasmPath).then(() => true).catch(() => false)
+      const jsExists = await fs.access(fallbackJsPath).then(() => true).catch(() => false)
+      const wasmExists = await fs.access(fallbackWasmPath).then(() => true).catch(() => false)
       
       expect(jsExists).toBe(true)
       expect(wasmExists).toBe(true)

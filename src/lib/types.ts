@@ -45,6 +45,13 @@ export interface ZlibModule {
   _zlib_get_version(): number
   _zlib_crc32(crc: number, data: number, len: number): number
 
+  // SIMD-accelerated functions (production-ready performance)
+  _zlib_compress_simd(input: number, input_len: number, output: number, output_len: number, level: number): number
+  _zlib_crc32_simd_optimized(crc: number, data: number, len: number): number
+  _zlib_benchmark_simd_compression(data: number, len: number, iterations: number): number
+  _zlib_simd_capabilities(): number
+  _zlib_simd_analysis(input: number, input_len: number, compression_ratio: number, simd_speedup: number, memory_efficiency: number): void
+
   // Optional optimized memory management
   _zlib_init_optimized_memory?(): void
   _zlib_cleanup_optimized_memory?(): void
@@ -55,6 +62,8 @@ export interface ZlibModule {
 
   // Runtime interface
   HEAPU8: Uint8Array
+  HEAP32: Int32Array
+  HEAPF64: Float64Array
   setValue(ptr: number, value: number, type: 'i8' | 'i16' | 'i32' | 'float' | 'double'): void
   getValue(ptr: number, type: 'i8' | 'i16' | 'i32' | 'float' | 'double'): number
   UTF8ToString?(ptr: number): string
@@ -88,6 +97,10 @@ export interface CompressionResult {
   spaceSaved: number
   /** CRC32 checksum of original data */
   crc32: number
+  /** Original data size in bytes */
+  originalSize: number
+  /** Compressed data size in bytes */
+  compressedSize: number
 }
 
 // Decompression result with validation

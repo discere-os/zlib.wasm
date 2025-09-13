@@ -11,8 +11,19 @@
 
 #include <emscripten.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "zlib.h"
+
+// Forward declarations for SIMD functions
+extern int zlib_compress_simd(const uint8_t* input, size_t input_len,
+                             uint8_t* output, size_t* output_len, int level);
+extern uint32_t zlib_crc32_simd_optimized(uint32_t crc, const uint8_t* data, size_t len);
+extern double zlib_benchmark_simd_compression(const uint8_t* data, size_t len, int iterations);
+extern int zlib_simd_capabilities(void);
+extern void zlib_simd_analysis(const uint8_t* input, size_t input_len,
+                               double* compression_ratio, double* simd_speedup,
+                               double* memory_efficiency);
 
 // WASM-specific zlib wrapper functions with error checking and memory management
 

@@ -251,17 +251,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --ignore-workspace --frozen-lockfile
       
       - name: Audit dependencies
         run: pnpm audit --audit-level=moderate
       
       - name: Check for vulnerabilities
         run: |
-          npx audit-ci --config .audit-ci.json || echo "Audit completed with warnings"
+          # Additional vulnerability checking (audit-ci not configured yet)
+          echo "Using pnpm audit for vulnerability detection"
           
           # Generate security summary
           echo "## 🔒 Security Audit" >> $GITHUB_STEP_SUMMARY

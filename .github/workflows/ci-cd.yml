@@ -365,19 +365,20 @@ jobs:
           name: dist-package
           path: ./
       
+      - name: Set release version
+        id: release-version
+        run: echo "VERSION=v$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      
       - name: Deploy versioned WASM to Cloudflare R2
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: |
-            VERSION=v$(node -p "require('./package.json').version")
-            
-            # Deploy versioned WASM modules to new bucket (immutable)
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/side/zlib-side.wasm --file=install/wasm/zlib-side.wasm
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/main/zlib-release.js --file=install/wasm/zlib-release.js
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/main/zlib-release.wasm --file=install/wasm/zlib-release.wasm
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/package.json --file=package.json
+            r2 object put discere-os-wasm-production/zlib/${{ steps.release-version.outputs.VERSION }}/side/zlib-side.wasm --file=install/wasm/zlib-side.wasm
+            r2 object put discere-os-wasm-production/zlib/${{ steps.release-version.outputs.VERSION }}/main/zlib-release.js --file=install/wasm/zlib-release.js
+            r2 object put discere-os-wasm-production/zlib/${{ steps.release-version.outputs.VERSION }}/main/zlib-release.wasm --file=install/wasm/zlib-release.wasm
+            r2 object put discere-os-wasm-production/zlib/${{ steps.release-version.outputs.VERSION }}/package.json --file=package.json
       
       - name: Deploy latest WASM to Cloudflare R2
         uses: cloudflare/wrangler-action@v3
@@ -393,9 +394,8 @@ jobs:
       
       - name: Verify Cloudflare deployment
         run: |
-          VERSION=v$(node -p "require('./package.json').version")
           sleep 15  # Wait for R2 propagation
-          curl -f "https://wasm.discere.cloud/zlib@${VERSION}/package.json" || exit 1
+          curl -f "https://wasm.discere.cloud/zlib@${{ steps.release-version.outputs.VERSION }}/package.json" || exit 1
           echo "✅ Cloudflare R2 deployment verified"
 
   deploy-cloudflare-snapshot:
@@ -425,25 +425,25 @@ jobs:
           name: dist-package
           path: ./
       
+      - name: Set snapshot version
+        id: version
+        run: echo "VERSION=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
       - name: Deploy snapshot WASM to Cloudflare R2
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: |
-            VERSION=sha-$(git rev-parse --short HEAD)
+            r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/side/zlib-side.wasm --file=install/wasm/zlib-side.wasm
+            r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/main/zlib-release.js --file=install/wasm/zlib-release.js
+            r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/main/zlib-release.wasm --file=install/wasm/zlib-release.wasm
+            r2 object put discere-os-wasm-production/zlib/${{ steps.version.outputs.VERSION }}/package.json --file=package.json
             
-            # Deploy snapshot WASM modules (30-day expiration)
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/side/zlib-side.wasm --file=install/wasm/zlib-side.wasm
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/main/zlib-release.js --file=install/wasm/zlib-release.js
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/main/zlib-release.wasm --file=install/wasm/zlib-release.wasm
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/package.json --file=package.json
-            
-            echo "✅ Snapshot ${VERSION} deployed to Cloudflare R2"
+            echo "✅ Snapshot ${{ steps.version.outputs.VERSION }} deployed to Cloudflare R2"
       
       - name: Verify snapshot deployment
         run: |
-          VERSION=sha-$(git rev-parse --short HEAD)
           sleep 15  # Wait for R2 propagation
           
           echo "## 🚀 Snapshot Deployment" >> $GITHUB_STEP_SUMMARY
@@ -451,9 +451,9 @@ jobs:
           
           # Test CDN endpoints
           ENDPOINTS=(
-            "https://wasm.discere.cloud/zlib@${VERSION}/package.json"
-            "https://wasm.discere.cloud/zlib@${VERSION}/side/zlib-side.wasm"
-            "https://wasm.discere.cloud/zlib@${VERSION}/main/zlib-release.js"
+            "https://wasm.discere.cloud/zlib@${{ steps.version.outputs.VERSION }}/package.json"
+            "https://wasm.discere.cloud/zlib@${{ steps.version.outputs.VERSION }}/side/zlib-side.wasm"
+            "https://wasm.discere.cloud/zlib@${{ steps.version.outputs.VERSION }}/main/zlib-release.js"
           )
           
           echo "| Endpoint | Status |" >> $GITHUB_STEP_SUMMARY

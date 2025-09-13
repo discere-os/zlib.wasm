@@ -1,0 +1,90 @@
+{
+  "name": "@discere-os/zlib.wasm",
+  "version": "1.4.2",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "description": "High-performance zlib compression library with SIMD optimizations for Discere OS",
+  "main": "dist/lib/index.js",
+  "module": "dist/lib/index.js", 
+  "types": "dist/lib/types.d.ts",
+  "exports": {
+    ".": {
+      "browser": "./dist/lib/index.js",
+      "node": "./dist/lib/index.js",
+      "types": "./dist/lib/types.d.ts"
+    },
+    "./side": {
+      "import": "./install/wasm/zlib-side.wasm",
+      "types": "./dist/lib/types.d.ts"
+    },
+    "./test": {
+      "import": "./install/wasm/zlib-release.js",
+      "types": "./dist/lib/types.d.ts"
+    },
+    "./optimized": {
+      "import": "./install/wasm/zlib-optimized.js",
+      "types": "./dist/lib/types.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "/usr/bin/node ./node_modules/typescript/lib/tsc.js --project . --skipLibCheck && ./build-dual.sh all && mkdir -p build && cp install/wasm/* build/",
+    "build:wasm": "./build-dual.sh all",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "type-check": "/usr/bin/node ./node_modules/typescript/lib/tsc.js --project . --noEmit --skipLibCheck",
+    "demo": "node dist/demo.js",
+    "benchmark": "node dist/benchmark.js",
+    "clean": "./build-dual.sh clean && rm -rf node_modules/.vite",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "zlib",
+    "compression",
+    "webassembly",
+    "wasm",
+    "simd",
+    "deflate",
+    "inflate",
+    "crc32",
+    "discere-os",
+    "learning-os"
+  ],
+  "author": "Superstruct Ltd, New Zealand", 
+  "license": "Zlib",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/discere-os/zlib.wasm.git"
+  },
+  "homepage": "https://github.com/discere-os/zlib.wasm",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "@vitest/ui": "^3.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "files": [
+    "dist/",
+    "install/",
+    "src/",
+    "build-dual.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "cdn": {
+    "primary": "https://wasm.discere.cloud/zlib/",
+    "fallbacks": [
+      "https://cdn.jsdelivr.net/npm/@discere-os/zlib.wasm/",
+      "https://unpkg.com/@discere-os/zlib.wasm/"
+    ]
+  }
+}

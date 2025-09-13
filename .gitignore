@@ -49,3 +49,34 @@ user.bazelrc
 # MODULE.bazel.lock is ignored for now as per this recommendation:
 # https://github.com/bazelbuild/bazel/issues/20369
 MODULE.bazel.lock
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+
+# Build outputs (TypeScript compilation and WASM builds)
+dist/
+build/
+*.js.map
+
+# Test outputs
+coverage/
+test-results.json
+server.log
+*.lcov
+
+# TypeScript cache
+.vitest/
+
+# Development artifacts
+.env
+.env.local
+
+# Build directories and artifacts
+build-*/
+install/
+target/
+pkg/
+
+# NPM pack output
+*.tgz

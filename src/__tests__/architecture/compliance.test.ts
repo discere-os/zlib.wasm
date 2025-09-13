@@ -29,12 +29,12 @@ describe('zlib.wasm Architecture Compliance', () => {
 
     it('should export SIDE_MODULE path', () => {
       expect(packageJson.exports['./side']).toBeDefined()
-      expect(packageJson.exports['./side'].import).toBe('./install/dist/side/zlib-side.wasm')
+      expect(packageJson.exports['./side'].import).toBe('./install/wasm/zlib-side.wasm')
     })
 
     it('should export test MAIN_MODULE path', () => {
       expect(packageJson.exports['./test']).toBeDefined()
-      expect(packageJson.exports['./test'].import).toBe('./install/dist/test/zlib-release.js')
+      expect(packageJson.exports['./test'].import).toBe('./install/wasm/zlib-release.js')
     })
 
     it('should have proper CDN configuration', () => {

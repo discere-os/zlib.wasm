@@ -1,0 +1,26 @@
+{
+  "name": "@discere-os/zlib.wasm",
+  "version": "1.4.2",
+  "buildTime": "2025-09-15T12:39:20.705Z",
+  "source": "deno-first",
+  "target": "nodejs-compatibility",
+  "assets": [
+    "zlib-side.wasm",
+    "zlib-release.js",
+    "zlib-release.wasm",
+    "zlib-fallback.js",
+    "zlib-fallback.wasm"
+  ],
+  "dualArchitecture": {
+    "sideModule": "zlib-side.wasm",
+    "mainModule": "zlib-release.js",
+    "fallback": "zlib-fallback.js"
+  },
+  "features": [
+    "SIMD optimizations",
+    "Dynamic linking",
+    "TypeScript-first",
+    "CDN fallbacks",
+    "Memory efficient"
+  ]
+}

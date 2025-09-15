@@ -85,10 +85,12 @@ build_zlib_main_module() {
         -msimd128 \
         -sWASM=1 \
         -sMODULARIZE=1 \
+        -sEXPORT_ES6=1 \
         -sEXPORT_NAME="ZlibModule" \
         -sEXPORTED_FUNCTIONS='["_zlib_compress_buffer","_zlib_decompress_buffer","_zlib_crc32","_zlib_adler32","_zlib_compress_bound","_zlib_get_version","_zlib_compress_simd","_zlib_crc32_simd_optimized","_zlib_benchmark_simd_compression","_zlib_simd_capabilities","_zlib_simd_analysis","_zlib_slide_hash_simd","_zlib_compare256_simd","_zlib_adler32_simd","_zlib_longest_match_simd","_zlib_chunkmemset_simd","_zlib_compress_simd_full","_zlib_crc32_simd_enhanced","_zlib_simd_capabilities_enhanced","_zlib_simd_performance_analysis","_malloc","_free"]' \
         -sEXPORTED_RUNTIME_METHODS='["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP8","HEAP32"]' \
-        -sASSERTIONS=0 \
+        -sALLOW_MEMORY_GROWTH=1 \
+        -sASSERTIONS=1 \
         -sNO_EXIT_RUNTIME=1 \
         -o zlib-release.js
 
@@ -99,6 +101,7 @@ build_zlib_main_module() {
         -O2 \
         -sWASM=1 \
         -sMODULARIZE=1 \
+        -sEXPORT_ES6=1 \
         -sEXPORT_NAME="ZlibModule" \
         -sEXPORTED_FUNCTIONS='["_zlib_compress_buffer","_zlib_decompress_buffer","_zlib_crc32","_zlib_adler32","_zlib_compress_bound","_zlib_get_version","_malloc","_free"]' \
         -sEXPORTED_RUNTIME_METHODS='["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP8","HEAP32"]' \

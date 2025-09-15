@@ -3,7 +3,7 @@
   "version": "1.4.2",
   "type": "module",
   "packageManager": "pnpm@9.15.0",
-  "description": "High-performance zlib compression library with SIMD optimizations for Discere OS",
+  "description": "High-performance zlib compression library with SIMD optimizations for WebAssembly applications",
   "main": "dist/lib/index.js",
   "module": "dist/lib/index.js", 
   "types": "dist/lib/types.d.ts",
@@ -29,16 +29,9 @@
   "scripts": {
     "build": "tsc --project . --skipLibCheck && ./build-dual.sh all && mkdir -p build && cp install/wasm/* build/",
     "build:wasm": "./build-dual.sh all",
-    "test": "vitest",
-    "test:watch": "vitest --watch",
-    "test:coverage": "vitest --coverage",
-    "test:ui": "vitest --ui",
     "type-check": "tsc --project . --noEmit --skipLibCheck",
-    "demo": "node dist/demo.js",
-    "benchmark": "node dist/benchmark.js",
-    "benchmark:simd": "node dist/simd_benchmark.js",
-    "clean": "./build-dual.sh clean && rm -rf node_modules/.vite",
-    "prepublishOnly": "npm run build && npm run test"
+    "clean": "./build-dual.sh clean && rm -rf dist/",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "zlib",
@@ -49,8 +42,10 @@
     "deflate",
     "inflate",
     "crc32",
-    "discere-os",
-    "learning-os"
+    "browser",
+    "client-side",
+    "pwa",
+    "dynamic-linking"
   ],
   "author": "Superstruct Ltd, New Zealand", 
   "license": "Zlib",

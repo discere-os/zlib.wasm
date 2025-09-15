@@ -1,0 +1,70 @@
+{
+  "name": "@discere-os/zlib.wasm",
+  "version": "1.4.2",
+  "description": "High-performance zlib compression library with SIMD optimizations for WebAssembly applications",
+  "keywords": [
+    "zlib",
+    "compression",
+    "webassembly",
+    "wasm",
+    "simd",
+    "deflate",
+    "inflate",
+    "crc32",
+    "adler32",
+    "browser",
+    "nodejs",
+    "typescript",
+    "dynamic-linking",
+    "side-module",
+    "discere-os"
+  ],
+  "author": "Superstruct Ltd, New Zealand",
+  "homepage": "https://github.com/discere-os/zlib.wasm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/discere-os/zlib.wasm.git"
+  },
+  "license": "Zlib",
+  "main": "./script/lib/index.js",
+  "module": "./esm/lib/index.js",
+  "types": "./types/lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./esm/lib/index.js",
+      "require": "./script/lib/index.js",
+      "types": "./types/lib/index.d.ts"
+    },
+    "./side": {
+      "import": "./assets/zlib-side.wasm",
+      "types": "./types/lib/types.d.ts"
+    },
+    "./main": {
+      "import": "./assets/zlib-release.js",
+      "types": "./types/lib/types.d.ts"
+    },
+    "./fallback": {
+      "import": "./assets/zlib-fallback.js",
+      "types": "./types/lib/types.d.ts"
+    },
+    "./types": {
+      "import": "./types/lib/types.d.ts",
+      "require": "./types/lib/types.d.ts"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "script/",
+    "esm/",
+    "types/",
+    "assets/",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.9.0"
+  },
+  "_generatedBy": "dnt@0.40.0"
+}

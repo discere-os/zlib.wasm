@@ -13,7 +13,7 @@ import {
   ZlibMemoryError,
   ZlibCompressionError,
   ZlibInitError
-} from './types.ts'
+} from './types.js'
 import type {
   ZlibModule,
   ZlibOptions,
@@ -22,7 +22,7 @@ import type {
   ZlibLoadingOptions,
   CompressionPerformance,
   BenchmarkResult
-} from './types.ts'
+} from './types.js'
 
 export default class Zlib {
   private module: ZlibModule | null = null
@@ -52,9 +52,7 @@ export default class Zlib {
     try {
       // Load WASM module with CDN fallback
       const moduleFactory = await this.loadWASMModule()
-      this.module = await moduleFactory({
-        wasmBinary: await this.loadWasmBinary()
-      })
+      this.module = await moduleFactory()
 
       // Verify WASM functions available
       const requiredFunctions = [
@@ -107,45 +105,30 @@ export default class Zlib {
       // Allocate output buffer
       const outputPtr = this.module!._malloc(maxOutputSize)
 
-      // Allocate space for the output length (unsigned long*)
-      const outputLenPtr = this.module!._malloc(8) // 8 bytes for unsigned long
-      this.module!.HEAP32[outputLenPtr / 4] = maxOutputSize
-
-      // Perform compression with SIMD acceleration when available
-      // SIMD accelerates hash calculation, string matching, and memory ops within standard zlib
-      const level = options.level || ZlibCompression.DEFAULT_COMPRESSION
-      const simdEnabled = this.loadingOptions.simdOptimizations &&
-                         this.getCapabilities().simdSupported
-
+      // Perform compression
       const result = this.module!._zlib_compress_buffer(
         inputPtr,
         data.length,
-        outputPtr,
-        outputLenPtr,
-        level
+        options.level || ZlibCompression.DEFAULT_COMPRESSION,
+        options.strategy || ZlibStrategy.DEFAULT_STRATEGY
       )
 
-      if (result !== 0) {
-        throw new ZlibCompressionError(`Compression failed with code: ${result}`)
-      }
-
-      // Get the actual compressed size
-      const compressedSize = this.module!.HEAP32[outputLenPtr / 4]
-
-      if (compressedSize === 0) {
+      if (result.size === 0) {
         throw new ZlibCompressionError('Compression failed - no output generated')
       }
 
       // Copy compressed data
-      const compressedData = new Uint8Array(compressedSize)
+      const compressedData = new Uint8Array(result.size)
       compressedData.set(
-        this.module!.HEAPU8.subarray(outputPtr, outputPtr + compressedSize)
+        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
       )
 
       // Free memory
       this.module!._free(inputPtr)
       this.module!._free(outputPtr)
-      this.module!._free(outputLenPtr)
+      if (result.dataPtr !== outputPtr) {
+        this.module!._free(result.dataPtr)
+      }
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
@@ -153,10 +136,10 @@ export default class Zlib {
       return {
         data: compressedData,
         originalSize: data.length,
-        compressedSize,
-        compressionRatio: data.length / compressedSize,
+        compressedSize: result.size,
+        compressionRatio: data.length / result.size,
         processingTime,
-        simdAccelerated: simdEnabled
+        simdAccelerated: result.simdUsed
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -179,56 +162,35 @@ export default class Zlib {
       const inputPtr = this.module!._malloc(data.length)
       this.module!.HEAPU8.set(data, inputPtr)
 
-      // Estimate output buffer size (be very generous to avoid Z_BUF_ERROR)
-      // Start with 20x, but ensure minimum 64KB for larger compressed files
-      const estimatedSize = Math.max(data.length * 20, 64 * 1024)
-      const outputPtr = this.module!._malloc(estimatedSize)
-
-      // Allocate space for the output length (unsigned long*)
-      const outputLenPtr = this.module!._malloc(8) // 8 bytes for unsigned long
-      this.module!.HEAP32[outputLenPtr / 4] = estimatedSize
-
       // Perform decompression
-      const result = this.module!._zlib_decompress_buffer(
-        inputPtr,
-        data.length,
-        outputPtr,
-        outputLenPtr
-      )
+      const result = this.module!._zlib_decompress_buffer(inputPtr, data.length)
 
-      if (result !== 0) {
-        throw new ZlibCompressionError(`Decompression failed with code: ${result}`)
-      }
-
-      // Get the actual decompressed size
-      const decompressedSize = this.module!.HEAP32[outputLenPtr / 4]
-
-      if (decompressedSize === 0) {
+      if (result.size === 0) {
         throw new ZlibCompressionError('Decompression failed - no output generated')
       }
 
       // Copy decompressed data
-      const decompressedData = new Uint8Array(decompressedSize)
+      const decompressedData = new Uint8Array(result.size)
       decompressedData.set(
-        this.module!.HEAPU8.subarray(outputPtr, outputPtr + decompressedSize)
+        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
       )
 
       // Free memory
       this.module!._free(inputPtr)
-      this.module!._free(outputPtr)
-      this.module!._free(outputLenPtr)
+      if (result.dataPtr) {
+        this.module!._free(result.dataPtr)
+      }
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
 
       return {
         data: decompressedData,
-        originalSize: decompressedSize,
+        originalSize: result.size,
         compressedSize: data.length,
-        compressionRatio: decompressedSize / data.length,
+        compressionRatio: result.size / data.length,
         processingTime,
-        simdAccelerated: this.loadingOptions.simdOptimizations &&
-                         this.getCapabilities().simdSupported
+        simdAccelerated: result.simdUsed
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -278,13 +240,9 @@ export default class Zlib {
       throw new ZlibError('zlib.wasm not initialized')
     }
 
-    // Check SIMD capabilities - the function returns an integer
-    const simdCapabilitiesValue = this.module!._zlib_simd_capabilities?.() || 0
-    const simdSupported = simdCapabilitiesValue > 0
-
     return {
-      simdSupported,
-      simdCapabilities: simdSupported ? `WASM SIMD128 (${simdCapabilitiesValue})` : 'None',
+      simdSupported: this.module!._zlib_simd_supported?.() || false,
+      simdCapabilities: this.module!._zlib_simd_capabilities?.() || 'None',
       version: this.module!._zlib_get_version?.() || '1.4.2',
       maxMemoryMB: this.loadingOptions.maxMemoryMB || 256,
       compressionLevels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -390,81 +348,6 @@ export default class Zlib {
     }
 
     throw new ZlibInitError('Failed to load zlib.wasm from all sources')
-  }
-
-  private async loadWasmBinary(): Promise<ArrayBuffer> {
-    // Try local build paths first (for Deno and Node.js testing)
-    // @ts-ignore - Deno global may not exist in all environments
-    if (typeof globalThis.Deno !== 'undefined') {
-      // Deno environment - use Deno.readFile
-      const localPaths = [
-        './install/wasm/zlib-release.wasm',          // Dual build system main module
-        './install/wasm/zlib.wasm',                  // Legacy path
-        './build-dual-main-release/zlib-release.wasm', // Direct build output
-        './build/zlib-release.wasm'                  // Fallback location
-      ]
-
-      for (const localPath of localPaths) {
-        try {
-          const wasmBuffer = await Deno.readFile(localPath)
-          console.log(`✅ Loaded zlib.wasm binary from: ${localPath}`)
-          return wasmBuffer.buffer
-        } catch (error) {
-          console.log(`⚠️ Failed to load WASM from ${localPath}:`, (error as Error).message)
-          continue
-        }
-      }
-    }
-
-    // @ts-ignore - process global may not exist in all environments
-    if (typeof globalThis.process !== 'undefined' && globalThis.process?.versions?.node) {
-      // Node.js environment
-      const { readFile } = await import('fs/promises')
-      const { fileURLToPath } = await import('url')
-      const path = await import('path')
-
-      const localPaths = [
-        '../../../install/wasm/zlib-release.wasm',   // Dual build system main module
-        '../../../install/wasm/zlib.wasm',           // Legacy path
-        '../../../build-dual-main-release/zlib-release.wasm', // Direct build output
-        '../../../build/zlib-release.wasm'           // Fallback location
-      ]
-
-      for (const localPath of localPaths) {
-        try {
-          const filePath = path.resolve(fileURLToPath(import.meta.url), localPath)
-          const wasmBuffer = await readFile(filePath)
-          console.log(`✅ Loaded zlib.wasm binary from: ${localPath}`)
-          return new ArrayBuffer(wasmBuffer.byteLength).constructor === ArrayBuffer
-            ? wasmBuffer.buffer as ArrayBuffer
-            : new Uint8Array(wasmBuffer).buffer
-        } catch (error) {
-          console.log(`⚠️ Failed to load WASM from ${localPath}:`, (error as Error).message)
-          continue
-        }
-      }
-    }
-
-    // Try CDN loading for production use
-    const fallbackUrls = this.loadingOptions.fallbackUrls || []
-    const urls = [this.loadingOptions.cdnUrl, ...fallbackUrls]
-
-    for (const url of urls) {
-      if (!url) continue
-      try {
-        const wasmUrl = url.endsWith('/') ? `${url}zlib.wasm` : `${url}/zlib.wasm`
-        const response = await fetch(wasmUrl)
-        if (response.ok) {
-          console.log(`✅ Loaded zlib.wasm binary from CDN: ${url}`)
-          return await response.arrayBuffer()
-        }
-      } catch (error) {
-        console.warn(`Failed to load WASM from CDN ${url}:`, error)
-        continue
-      }
-    }
-
-    throw new Error('No zlib.wasm binary available. Run "deno task build:wasm" to build locally, or check CDN availability.')
   }
 }
 

@@ -4,6 +4,7 @@
     "lib": ["ES2022", "WebWorker"],
     "module": "ESNext",
     "moduleResolution": "Node",
+    "allowImportingTsExtensions": true,
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
@@ -27,6 +28,7 @@
     "dist",
     "build",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/*.node.ts"
   ]
 }

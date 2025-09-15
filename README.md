@@ -37,17 +37,11 @@ deno task build:npm
 ### Node.js Compatibility
 
 ```bash
-# Install dependencies (for NPM publishing only)
-pnpm install
+# Build NPM package for Node.js projects
+deno task build:npm
 
-# Build WASM module and TypeScript library
-pnpm build
-
-# Run comprehensive demo
-pnpm demo
-
-# Run test suite
-pnpm test
+# The built NPM package can then be installed in Node.js projects:
+# npm install @discere-os/zlib.wasm
 ```
 
 ## Usage
@@ -198,43 +192,31 @@ interface CompressionResult {
 ### Building from Source
 
 ```bash
-# Prerequisites
-pnpm install
-
 # Build optimized WASM module
-pnpm build:wasm
-
-# Compile TypeScript library
-pnpm build
+deno task build
 
 # Run comprehensive tests
-pnpm test
+deno task test
 ```
 
 ### Testing
 
 ```bash
 # Run complete test suite
-pnpm test
+deno task test
 
-# Run with coverage reporting  
-pnpm test:coverage
-
-# TypeScript compilation check
-pnpm type-check
-
-# Interactive test UI
-pnpm test:ui
+# Run benchmarks
+deno task benchmark
 ```
 
 ### Performance Analysis
 
 ```bash
 # Run performance demonstration
-pnpm demo
+deno task demo
 
 # Comprehensive benchmarking
-pnpm benchmark
+deno task benchmark
 ```
 
 ## Architecture

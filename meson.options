@@ -1,0 +1,3 @@
+option('main_module', type: 'boolean', value: true, description: 'Build MAIN module (ES6 + MODULARIZE)')
+option('side_module', type: 'boolean', value: true, description: 'Build SIDE module (-sSIDE_MODULE=2)')
+option('simd', type: 'boolean', value: true, description: 'Enable WASM SIMD (-msimd128)')

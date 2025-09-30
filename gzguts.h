@@ -42,6 +42,10 @@
 #endif
 #include <fcntl.h>
 
+#ifdef __EMSCRIPTEN__
+#  include "wasm/web_native_posix.h"
+#endif
+
 #ifdef _WIN32
 #  include <stddef.h>
 #endif

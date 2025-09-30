@@ -1,8 +1,9 @@
-zlib_wasm_cargs = ['-msimd128']
+zlib_wasm_cargs = ['-msimd128', '-DUSE_WEB_NATIVE_POSIX=1']
 
 sources_core = files(
   '../adler32.c','../crc32.c','../deflate.c','../infback.c','../inffast.c','../inflate.c','../inftrees.c','../trees.c','../uncompr.c','../zutil.c',
-  '../gzlib.c','../gzread.c','../gzwrite.c','../gzclose.c'
+  '../gzlib.c','../gzread.c','../gzwrite.c','../gzclose.c',
+  'web_native_posix.c'
 )
 
 inc = include_directories('..')
@@ -37,9 +38,26 @@ shared_module('zlib-side',
   ['zlib_wasm_side.c'] + sources_core,
   include_directories: inc,
   name_prefix: '',
+  name_suffix: 'wasm',
   c_args: zlib_wasm_cargs,
   link_args: side_link_args,
   install: true,
   install_dir: get_option('libdir')
+)
+
+# Static library for linking by dependent libraries
+zlib_lib = static_library('z',
+  sources_core,
+  include_directories: inc,
+  c_args: zlib_wasm_cargs,
+  install: true,
+  install_dir: get_option('libdir')
+)
+
+# Install headers for dependency chain
+install_headers(
+  '../zlib.h',
+  '../zconf.h',
+  subdir: '.'
 )
 

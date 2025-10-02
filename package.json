@@ -30,6 +30,10 @@
     "build": "tsc --project . --skipLibCheck && ./build-dual.sh all && mkdir -p build && cp install/wasm/* build/",
     "build:wasm": "./build-dual.sh all",
     "type-check": "tsc --project . --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "benchmark": "echo 'Benchmarks not implemented yet'",
+    "build:docs": "echo 'Documentation generation not implemented yet'",
     "clean": "./build-dual.sh clean && rm -rf dist/",
     "prepublishOnly": "npm run build"
   },

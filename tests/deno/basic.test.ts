@@ -8,26 +8,26 @@ Deno.test("Deno runtime features", () => {
 
 Deno.test("WASM file accessibility", async () => {
   try {
-    const wasmFile = await Deno.stat("./install/wasm/zlib-release.wasm");
+    const wasmFile = await Deno.stat("./install/wasm/zlib-main.wasm");
     assert(wasmFile.isFile, "WASM file should exist");
     assert(wasmFile.size > 0, "WASM file should not be empty");
     console.log(`✅ Found WASM file: ${wasmFile.size} bytes`);
   } catch (error) {
     console.warn("⚠️  WASM file not found - run 'deno task build:wasm' first");
-    console.warn(`   Error: ${error.message}`);
+    console.warn(`   Error: ${(error as Error).message}`);
     // Don't fail the test if WASM not built yet
   }
 });
 
 Deno.test("JavaScript module accessibility", async () => {
   try {
-    const jsFile = await Deno.stat("./install/wasm/zlib-release.js");
+    const jsFile = await Deno.stat("./install/wasm/zlib-main.js");
     assert(jsFile.isFile, "JS module file should exist");
     assert(jsFile.size > 0, "JS module file should not be empty");
     console.log(`✅ Found JS module: ${jsFile.size} bytes`);
   } catch (error) {
     console.warn("⚠️  JS module not found - run 'deno task build:wasm' first");
-    console.warn(`   Error: ${error.message}`);
+    console.warn(`   Error: ${(error as Error).message}`);
     // Don't fail the test if WASM not built yet
   }
 });

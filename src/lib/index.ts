@@ -13,7 +13,7 @@ import {
   ZlibMemoryError,
   ZlibCompressionError,
   ZlibInitError
-} from './types.js'
+} from './types.ts'
 import type {
   ZlibModule,
   ZlibOptions,
@@ -22,7 +22,7 @@ import type {
   ZlibLoadingOptions,
   CompressionPerformance,
   BenchmarkResult
-} from './types.js'
+} from './types.ts'
 
 export default class Zlib {
   private module: ZlibModule | null = null
@@ -330,21 +330,30 @@ export default class Zlib {
     const fallbackUrls = this.loadingOptions.fallbackUrls || []
     const urls = [this.loadingOptions.cdnUrl, ...fallbackUrls]
 
+    // Try local builds first
+    const localJsPaths = [
+      './../../install/wasm/zlib-main.js',     // Meson build
+      './../../install/wasm/zlib-release.js',  // Dual build
+    ]
+
+    for (const jsPath of localJsPaths) {
+      try {
+        const modulePath = new URL(jsPath, import.meta.url).href
+        const localModule = await import(modulePath) as any
+        console.log(`✅ Loaded zlib module from: ${jsPath}`)
+        return localModule.default
+      } catch (error) {
+        // Continue to next path
+        console.log(`⚠️ Failed to load from ${jsPath}:`, (error as Error).message)
+      }
+    }
+
+    // Fall back to CDN
     for (const baseUrl of urls) {
       try {
         const moduleUrl = `${baseUrl}install/wasm/zlib-release.js`
-
-        // Try to load from local file first (development)
-        try {
-          // Use dynamic import with absolute path to avoid TypeScript module resolution
-          const modulePath = new URL('./../../install/wasm/zlib-release.js', import.meta.url).href
-          const localModule = await import(modulePath) as any
-          return localModule.default
-        } catch {
-          // Fall back to CDN
-          const moduleFactory = await import(moduleUrl)
-          return moduleFactory.default
-        }
+        const moduleFactory = await import(moduleUrl)
+        return moduleFactory.default
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.warn(`Failed to load from ${baseUrl}: ${errorMessage}`)
@@ -360,6 +369,7 @@ export default class Zlib {
     if (typeof globalThis.Deno !== 'undefined') {
       // Deno environment - use Deno.readFile
       const localPaths = [
+        './install/wasm/zlib-main.wasm',             // Meson build main module
         './install/wasm/zlib-release.wasm',          // Dual build system main module
         './install/wasm/zlib.wasm',                  // Legacy path
         './build-dual-main-release/zlib-release.wasm', // Direct build output
@@ -387,6 +397,7 @@ export default class Zlib {
       const path = await import('path')
 
       const localPaths = [
+        '../../../install/wasm/zlib-main.wasm',      // Meson build main module
         '../../../install/wasm/zlib-release.wasm',   // Dual build system main module
         '../../../install/wasm/zlib.wasm',           // Legacy path
         '../../../build-dual-main-release/zlib-release.wasm', // Direct build output
@@ -395,8 +406,10 @@ export default class Zlib {
 
       for (const localPath of localPaths) {
         try {
-          const filePath = path.resolve(fileURLToPath(import.meta.url), localPath)
-          const wasmBuffer = await readFile(filePath)
+          // Use URL-based path resolution for Deno
+          const baseUrl = new URL('.', import.meta.url)
+          const wasmUrl = new URL(localPath, baseUrl)
+          const wasmBuffer = await readFile(wasmUrl.pathname)
           console.log(`✅ Loaded zlib.wasm binary from: ${localPath}`)
           return new ArrayBuffer(wasmBuffer.byteLength).constructor === ArrayBuffer
             ? wasmBuffer.buffer as ArrayBuffer

@@ -221,14 +221,14 @@ export default class Zlib {
       const endTime = performance.now()
       const processingTime = endTime - startTime
 
+      const simdSupported = this.getCapabilities().simdSupported ?? false
       return {
         data: decompressedData,
         originalSize: decompressedSize,
         compressedSize: data.length,
         compressionRatio: decompressedSize / data.length,
         processingTime,
-        simdAccelerated: this.loadingOptions.simdOptimizations &&
-                         this.getCapabilities().simdSupported
+        simdAccelerated: (this.loadingOptions.simdOptimizations ?? false) && simdSupported
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -279,7 +279,7 @@ export default class Zlib {
     }
 
     // Check SIMD capabilities - the function returns an integer
-    const simdCapabilitiesValue = this.module!._zlib_simd_capabilities?.() || 0
+    const simdCapabilitiesValue = Number(this.module!._zlib_simd_capabilities?.() || 0)
     const simdSupported = simdCapabilitiesValue > 0
 
     return {
@@ -406,6 +406,7 @@ export default class Zlib {
 
       for (const localPath of localPaths) {
         try {
+          // @ts-ignore - Deno is checked above
           const wasmBuffer = await Deno.readFile(localPath)
           console.log(`✅ Loaded zlib.wasm binary from: ${localPath}`)
           return wasmBuffer.buffer

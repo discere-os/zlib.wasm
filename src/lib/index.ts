@@ -100,52 +100,32 @@ export default class Zlib {
       const inputPtr = this.module!._malloc(data.length)
       this.module!.HEAPU8.set(data, inputPtr)
 
-      // Calculate maximum output buffer size
-      const maxOutputSize = this.module!._zlib_compress_bound?.(data.length) ||
-                            Math.ceil(data.length * 1.1) + 12
-
-      // Allocate output buffer
-      const outputPtr = this.module!._malloc(maxOutputSize)
-
-      // Allocate space for the output length (unsigned long*)
-      const outputLenPtr = this.module!._malloc(8) // 8 bytes for unsigned long
-      this.module!.HEAP32[outputLenPtr / 4] = maxOutputSize
-
       // Perform compression with SIMD acceleration when available
-      // SIMD accelerates hash calculation, string matching, and memory ops within standard zlib
-      const level = options.level || ZlibCompression.DEFAULT_COMPRESSION
-      const simdEnabled = this.loadingOptions.simdOptimizations &&
-                         this.getCapabilities().simdSupported
+      const level = options.level ?? ZlibCompression.DEFAULT_COMPRESSION
+      const strategy = options.strategy ?? ZlibStrategy.DEFAULT_STRATEGY
 
       const result = this.module!._zlib_compress_buffer(
         inputPtr,
         data.length,
-        outputPtr,
-        outputLenPtr,
-        level
+        level,
+        strategy
       )
 
-      if (result !== 0) {
-        throw new ZlibCompressionError(`Compression failed with code: ${result}`)
-      }
+      // Free input buffer
+      this.module!._free(inputPtr)
 
-      // Get the actual compressed size
-      const compressedSize = this.module!.HEAP32[outputLenPtr / 4]
-
-      if (compressedSize === 0) {
+      if (!result || result.size === 0) {
         throw new ZlibCompressionError('Compression failed - no output generated')
       }
 
       // Copy compressed data
-      const compressedData = new Uint8Array(compressedSize)
+      const compressedData = new Uint8Array(result.size)
       compressedData.set(
-        this.module!.HEAPU8.subarray(outputPtr, outputPtr + compressedSize)
+        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
       )
 
-      // Free memory
-      this.module!._free(inputPtr)
-      this.module!._free(outputPtr)
-      this.module!._free(outputLenPtr)
+      // Free output buffer (allocated by WASM)
+      this.module!._free(result.dataPtr)
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
@@ -153,10 +133,10 @@ export default class Zlib {
       return {
         data: compressedData,
         originalSize: data.length,
-        compressedSize,
-        compressionRatio: data.length / compressedSize,
+        compressedSize: result.size,
+        compressionRatio: data.length / result.size,
         processingTime,
-        simdAccelerated: simdEnabled
+        simdAccelerated: result.simdUsed
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -179,56 +159,38 @@ export default class Zlib {
       const inputPtr = this.module!._malloc(data.length)
       this.module!.HEAPU8.set(data, inputPtr)
 
-      // Estimate output buffer size (be very generous to avoid Z_BUF_ERROR)
-      // Start with 20x, but ensure minimum 64KB for larger compressed files
-      const estimatedSize = Math.max(data.length * 20, 64 * 1024)
-      const outputPtr = this.module!._malloc(estimatedSize)
-
-      // Allocate space for the output length (unsigned long*)
-      const outputLenPtr = this.module!._malloc(8) // 8 bytes for unsigned long
-      this.module!.HEAP32[outputLenPtr / 4] = estimatedSize
-
       // Perform decompression
       const result = this.module!._zlib_decompress_buffer(
         inputPtr,
-        data.length,
-        outputPtr,
-        outputLenPtr
+        data.length
       )
 
-      if (result !== 0) {
-        throw new ZlibCompressionError(`Decompression failed with code: ${result}`)
-      }
+      // Free input buffer
+      this.module!._free(inputPtr)
 
-      // Get the actual decompressed size
-      const decompressedSize = this.module!.HEAP32[outputLenPtr / 4]
-
-      if (decompressedSize === 0) {
+      if (!result || result.size === 0) {
         throw new ZlibCompressionError('Decompression failed - no output generated')
       }
 
       // Copy decompressed data
-      const decompressedData = new Uint8Array(decompressedSize)
+      const decompressedData = new Uint8Array(result.size)
       decompressedData.set(
-        this.module!.HEAPU8.subarray(outputPtr, outputPtr + decompressedSize)
+        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
       )
 
-      // Free memory
-      this.module!._free(inputPtr)
-      this.module!._free(outputPtr)
-      this.module!._free(outputLenPtr)
+      // Free output buffer (allocated by WASM)
+      this.module!._free(result.dataPtr)
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
 
-      const simdSupported = this.getCapabilities().simdSupported ?? false
       return {
         data: decompressedData,
-        originalSize: decompressedSize,
+        originalSize: result.size,
         compressedSize: data.length,
-        compressionRatio: decompressedSize / data.length,
+        compressionRatio: result.size / data.length,
         processingTime,
-        simdAccelerated: (this.loadingOptions.simdOptimizations ?? false) && simdSupported
+        simdAccelerated: result.simdUsed
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -278,15 +240,15 @@ export default class Zlib {
       throw new ZlibError('zlib.wasm not initialized')
     }
 
-    // Check SIMD capabilities - the function returns an integer
-    const simdCapabilitiesValue = Number(this.module!._zlib_simd_capabilities?.() || 0)
-    const simdSupported = simdCapabilitiesValue > 0
+    // Check SIMD capabilities
+    const simdSupported = this.module!._zlib_simd_supported?.() ?? false
+    const simdCapabilities = this.module!._zlib_simd_capabilities?.() ?? 'None'
 
     return {
       simdSupported,
-      simdCapabilities: simdSupported ? `WASM SIMD128 (${simdCapabilitiesValue})` : 'None',
-      version: this.module!._zlib_get_version?.() || '1.4.2',
-      maxMemoryMB: this.loadingOptions.maxMemoryMB || 256,
+      simdCapabilities,
+      version: this.module!._zlib_get_version?.() ?? '1.4.2',
+      maxMemoryMB: this.loadingOptions.maxMemoryMB ?? 256,
       compressionLevels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
       strategies: Object.values(ZlibStrategy).filter(v => typeof v === 'number') as ZlibStrategy[]
     }

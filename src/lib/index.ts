@@ -13,7 +13,7 @@ import {
   ZlibMemoryError,
   ZlibCompressionError,
   ZlibInitError
-} from './types.ts'
+} from './types.js'
 import type {
   ZlibModule,
   ZlibOptions,
@@ -22,7 +22,7 @@ import type {
   ZlibLoadingOptions,
   CompressionPerformance,
   BenchmarkResult
-} from './types.ts'
+} from './types.js'
 
 export default class Zlib {
   private module: ZlibModule | null = null

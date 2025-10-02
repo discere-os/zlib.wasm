@@ -14,21 +14,18 @@
     "fs": "data:application/javascript,export const readFileSync = () => { throw new Error('fs not supported'); }; export default { readFileSync };"
   },
   "tasks": {
-    "demo": "deno run --allow-read --allow-write demo-deno.ts",
-    "test": "deno test --allow-read --no-check tests/deno/",
-    "test:basic": "deno test --allow-read --no-check tests/deno/basic.test.ts",
-    "build": "deno task build:wasm:meson",
-    "build:main:meson": "meson setup build-main --cross-file=scripts/emscripten.cross --prefix=$PWD/install -Dlibdir=wasm -Dbindir=wasm && meson compile -C build-main zlib-main && meson install -C build-main",
-    "build:side:meson": "meson setup build-side --cross-file=scripts/emscripten.cross --prefix=$PWD/install -Dlibdir=wasm -Dbindir=wasm && meson compile -C build-side zlib-side && meson install -C build-side",
-    "build:wasm:meson": "deno task build:main:meson && deno task build:side:meson",
+    "demo": "deno run --allow-read demo-deno.ts",
+    "test": "deno test --allow-read tests/deno/",
+    "test:basic": "deno test --allow-read tests/deno/basic.test.ts",
+    "bench": "deno bench --allow-read bench/",
+    "build:wasm": "./build-dual.sh all",
     "build:npm": "deno run --allow-all _build_npm.ts",
     "build:all": "deno task build:wasm && deno task build:npm",
-    "benchmark": "deno run --allow-read --allow-write bench/compression.bench.ts",
+    "validate:all": "deno task test && deno task bench",
     "publish:npm": "deno task build:all && cd npm && npm publish",
     "publish:dry": "deno task build:all && cd npm && npm publish --dry-run",
     "clean": "rm -rf build-* install/ dist/ npm/",
-    "check": "deno check src/lib/index.ts",
-    "check:all": "deno check src/lib/index.ts && deno check demo-deno.ts && deno check bench/compression.bench.ts && deno check _build_npm.ts"
+    "check": "deno check src/lib/index.ts"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "dom", "es2022", "deno.unstable"],

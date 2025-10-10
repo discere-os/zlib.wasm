@@ -22,15 +22,18 @@ export enum ZlibStrategy {
 
 // Main WASM module interface
 export interface ZlibModule {
-  _zlib_compress_buffer: (dataPtr: number, size: number, level: number, strategy: number) => ZlibWASMResult
-  _zlib_decompress_buffer: (dataPtr: number, size: number) => ZlibWASMResult
-  _zlib_crc32: (dataPtr: number, size: number) => number
-  _zlib_adler32: (dataPtr: number, size: number) => number
-  _zlib_get_version: () => string
-  _zlib_simd_supported: () => boolean
-  _zlib_simd_capabilities: () => string
+  // Compression/decompression with output parameter API
+  _zlib_compress_buffer: (srcPtr: number, srcLen: number, destPtr: number, destLenPtr: number, level: number) => number
+  _zlib_decompress_buffer: (srcPtr: number, srcLen: number, destPtr: number, destLenPtr: number) => number
   _zlib_compress_bound: (sourceLen: number) => number
-  _zlib_cleanup?: () => void
+
+  // Checksums
+  _zlib_crc32: (crc: number, dataPtr: number, size: number) => number
+  _zlib_adler32: (adler: number, dataPtr: number, size: number) => number
+
+  // Info functions
+  _zlib_get_version: () => number  // Returns pointer to string
+  _zlib_has_simd?: () => number
 
   // Memory management
   _malloc: (size: number) => number
@@ -39,10 +42,14 @@ export interface ZlibModule {
   // Memory views
   HEAPU8: Uint8Array
   HEAP32: Int32Array
+  HEAPU32: Uint32Array
 
   // Emscripten runtime
   cwrap: (name: string, returnType: string, argTypes: string[]) => Function
   ccall: (name: string, returnType: string, argTypes: string[], args: any[]) => any
+  UTF8ToString: (ptr: number) => string
+  getValue: (ptr: number, type: string) => number
+  setValue: (ptr: number, value: number, type: string) => void
   FS?: {
     readFile: (path: string) => Uint8Array
     writeFile: (path: string, data: Uint8Array) => void

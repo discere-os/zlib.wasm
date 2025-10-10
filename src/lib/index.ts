@@ -52,16 +52,24 @@ export default class Zlib {
     try {
       // Load WASM module with CDN fallback
       const moduleFactory = await this.loadWASMModule()
-      this.module = await moduleFactory({
-        wasmBinary: await this.loadWasmBinary()
+      const wasmBinary = await this.loadWasmBinary()
+
+      // Create module with wasmBinary
+      const module = await moduleFactory({
+        wasmBinary: wasmBinary
       })
+
+      // Emscripten may return the module directly or a promise - ensure we have the initialized module
+      this.module = await module
 
       // Verify WASM functions available
       const requiredFunctions = [
         '_zlib_compress_buffer',
         '_zlib_decompress_buffer',
+        '_zlib_compress_bound',
         '_zlib_crc32',
-        '_zlib_adler32'
+        '_zlib_adler32',
+        '_zlib_get_version'
       ]
 
       if (!this.module) {
@@ -100,32 +108,46 @@ export default class Zlib {
       const inputPtr = this.module!._malloc(data.length)
       this.module!.HEAPU8.set(data, inputPtr)
 
-      // Perform compression with SIMD acceleration when available
+      // Perform compression with output parameter API
       const level = options.level ?? ZlibCompression.DEFAULT_COMPRESSION
-      const strategy = options.strategy ?? ZlibStrategy.DEFAULT_STRATEGY
 
+      // Allocate output buffer - get max compressed size
+      const maxCompressedSize = this.module!._zlib_compress_bound(data.length)
+      const outputPtr = this.module!._malloc(maxCompressedSize)
+
+      // Allocate space for output length parameter
+      const outputLenPtr = this.module!._malloc(4)  // unsigned long is 4 bytes in wasm32
+      this.module!.setValue(outputLenPtr, maxCompressedSize, 'i32')
+
+      // Call compression function with output parameters
       const result = this.module!._zlib_compress_buffer(
         inputPtr,
         data.length,
-        level,
-        strategy
+        outputPtr,
+        outputLenPtr,
+        level
       )
 
-      // Free input buffer
-      this.module!._free(inputPtr)
+      // Read the actual compressed size
+      const compressedSize = this.module!.getValue(outputLenPtr, 'i32')
 
-      if (!result || result.size === 0) {
-        throw new ZlibCompressionError('Compression failed - no output generated')
+      // Free input buffer and length pointer
+      this.module!._free(inputPtr)
+      this.module!._free(outputLenPtr)
+
+      if (result !== 0) {  // Z_OK = 0
+        this.module!._free(outputPtr)
+        throw new ZlibCompressionError(`Compression failed with error code: ${result}`)
       }
 
       // Copy compressed data
-      const compressedData = new Uint8Array(result.size)
+      const compressedData = new Uint8Array(compressedSize)
       compressedData.set(
-        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
+        this.module!.HEAPU8.subarray(outputPtr, outputPtr + compressedSize)
       )
 
-      // Free output buffer (allocated by WASM)
-      this.module!._free(result.dataPtr)
+      // Free output buffer
+      this.module!._free(outputPtr)
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
@@ -133,10 +155,10 @@ export default class Zlib {
       return {
         data: compressedData,
         originalSize: data.length,
-        compressedSize: result.size,
-        compressionRatio: data.length / result.size,
+        compressedSize: compressedSize,
+        compressionRatio: data.length / compressedSize,
         processingTime,
-        simdAccelerated: result.simdUsed
+        simdAccelerated: false  // SIMD detection to be added
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -159,38 +181,53 @@ export default class Zlib {
       const inputPtr = this.module!._malloc(data.length)
       this.module!.HEAPU8.set(data, inputPtr)
 
+      // Allocate output buffer - estimate 20x compressed size (zlib can achieve 10-20x compression)
+      const estimatedSize = Math.max(data.length * 20, 64 * 1024)  // At least 64KB
+      const outputPtr = this.module!._malloc(estimatedSize)
+
+      // Allocate space for output length parameter
+      const outputLenPtr = this.module!._malloc(4)
+      this.module!.setValue(outputLenPtr, estimatedSize, 'i32')
+
       // Perform decompression
       const result = this.module!._zlib_decompress_buffer(
         inputPtr,
-        data.length
+        data.length,
+        outputPtr,
+        outputLenPtr
       )
 
-      // Free input buffer
-      this.module!._free(inputPtr)
+      // Read the actual decompressed size
+      const decompressedSize = this.module!.getValue(outputLenPtr, 'i32')
 
-      if (!result || result.size === 0) {
-        throw new ZlibCompressionError('Decompression failed - no output generated')
+      // Free input buffer and length pointer
+      this.module!._free(inputPtr)
+      this.module!._free(outputLenPtr)
+
+      if (result !== 0) {  // Z_OK = 0
+        this.module!._free(outputPtr)
+        throw new ZlibCompressionError(`Decompression failed with error code: ${result}`)
       }
 
       // Copy decompressed data
-      const decompressedData = new Uint8Array(result.size)
+      const decompressedData = new Uint8Array(decompressedSize)
       decompressedData.set(
-        this.module!.HEAPU8.subarray(result.dataPtr, result.dataPtr + result.size)
+        this.module!.HEAPU8.subarray(outputPtr, outputPtr + decompressedSize)
       )
 
-      // Free output buffer (allocated by WASM)
-      this.module!._free(result.dataPtr)
+      // Free output buffer
+      this.module!._free(outputPtr)
 
       const endTime = performance.now()
       const processingTime = endTime - startTime
 
       return {
         data: decompressedData,
-        originalSize: result.size,
+        originalSize: decompressedSize,
         compressedSize: data.length,
-        compressionRatio: result.size / data.length,
+        compressionRatio: decompressedSize / data.length,
         processingTime,
-        simdAccelerated: result.simdUsed
+        simdAccelerated: false  // SIMD detection to be added
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -209,7 +246,7 @@ export default class Zlib {
     const inputPtr = this.module!._malloc(data.length)
     this.module!.HEAPU8.set(data, inputPtr)
 
-    const crc = this.module!._zlib_crc32(inputPtr, data.length)
+    const crc = this.module!._zlib_crc32(0, inputPtr, data.length)
 
     this.module!._free(inputPtr)
     return crc
@@ -226,7 +263,7 @@ export default class Zlib {
     const inputPtr = this.module!._malloc(data.length)
     this.module!.HEAPU8.set(data, inputPtr)
 
-    const adler = this.module!._zlib_adler32(inputPtr, data.length)
+    const adler = this.module!._zlib_adler32(0, inputPtr, data.length)
 
     this.module!._free(inputPtr)
     return adler
@@ -241,13 +278,16 @@ export default class Zlib {
     }
 
     // Check SIMD capabilities
-    const simdSupported = this.module!._zlib_simd_supported?.() ?? false
-    const simdCapabilities = this.module!._zlib_simd_capabilities?.() ?? 'None'
+    const simdSupported = this.module!._zlib_has_simd?.() ?? false
+
+    // Get version string
+    const versionPtr = this.module!._zlib_get_version?.()
+    const version = versionPtr ? this.module!.UTF8ToString(versionPtr) : '1.4.2'
 
     return {
       simdSupported,
-      simdCapabilities,
-      version: this.module!._zlib_get_version?.() ?? '1.4.2',
+      simdCapabilities: simdSupported ? 'WASM SIMD128' : 'None',
+      version,
       maxMemoryMB: this.loadingOptions.maxMemoryMB ?? 256,
       compressionLevels: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
       strategies: Object.values(ZlibStrategy).filter(v => typeof v === 'number') as ZlibStrategy[]
@@ -316,10 +356,8 @@ export default class Zlib {
    * Cleanup resources
    */
   cleanup(): void {
-    if (this.module) {
-      this.module!._zlib_cleanup?.()
-      this.module = null
-    }
+    // Clean up module resources
+    this.module = null
     this.initialized = false
   }
 

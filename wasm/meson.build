@@ -1,7 +1,7 @@
 zlib_wasm_cargs = ['-msimd128', '-DUSE_WEB_NATIVE_POSIX=1']
 
 sources_core = files(
-  '../adler32.c','../crc32.c','../deflate.c','../infback.c','../inffast.c','../inflate.c','../inftrees.c','../trees.c','../uncompr.c','../zutil.c',
+  '../adler32.c','../compress.c','../crc32.c','../deflate.c','../infback.c','../inffast.c','../inflate.c','../inftrees.c','../trees.c','../uncompr.c','../zutil.c',
   '../gzlib.c','../gzread.c','../gzwrite.c','../gzclose.c',
   'web_native_posix.c'
 )
@@ -15,7 +15,8 @@ main_link_args = [
   '-sEXPORT_NAME=ZlibModule',
   '-sALLOW_MEMORY_GROWTH=1',
   '-sNO_FILESYSTEM=1',
-  '-sEXPORTED_RUNTIME_METHODS=["cwrap","ccall","UTF8ToString"]',
+  '-sEXPORTED_RUNTIME_METHODS=["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP32","HEAPU32"]',
+  '-sEXPORTED_FUNCTIONS=["_malloc","_free"]',
   '-O3','-flto',
 ]
 
@@ -31,7 +32,6 @@ executable('zlib-main',
 side_link_args = [
   '-sSIDE_MODULE=2',
   '-fPIC','-O3','-flto',
-  '-sEXPORTED_FUNCTIONS=["_zlib_wasm_version"]',
 ]
 
 shared_module('zlib-side',

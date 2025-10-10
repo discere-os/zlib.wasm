@@ -277,8 +277,8 @@ export default class Zlib {
       throw new ZlibError('zlib.wasm not initialized')
     }
 
-    // Check SIMD capabilities
-    const simdSupported = this.module!._zlib_has_simd?.() ?? false
+    // Check SIMD capabilities (C function returns int, convert to boolean)
+    const simdSupported = (this.module!._zlib_has_simd?.() ?? 0) !== 0
 
     // Get version string
     const versionPtr = this.module!._zlib_get_version?.()

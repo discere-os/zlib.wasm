@@ -7,32 +7,16 @@ on:
   pull_request:
     branches: [ wasm ]
 
-env:
-  EMSCRIPTEN_VERSION: '4.0.14'
-
 jobs:
   test:
     name: Test Suite (Deno)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, docker, wasm, emscripten]
+    container:
+      image: ghcr.io/discere-os/wasm-builder:minimal
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EMSCRIPTEN_VERSION }}
-
-      - name: Install Meson and Ninja
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y meson ninja-build
 
       - name: Type check
         run: deno check src/lib/index.ts
@@ -56,27 +40,14 @@ jobs:
 
   build:
     name: Build Distribution
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, docker, wasm, emscripten]
     needs: test
+    container:
+      image: ghcr.io/discere-os/wasm-builder:minimal
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EMSCRIPTEN_VERSION }}
-
-      - name: Install Meson and Ninja
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y meson ninja-build
 
       - name: Build WASM modules
         run: deno task build:wasm
@@ -118,7 +89,7 @@ jobs:
 
   deploy-cloudflare-release:
     name: Deploy Release to Cloudflare R2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, docker, wasm, emscripten]
     needs: [build]
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -175,7 +146,7 @@ jobs:
 
   deploy-cloudflare-snapshot:
     name: Deploy Snapshot to Cloudflare R2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, docker, wasm, emscripten]
     needs: [build]
     if: github.ref == 'refs/heads/wasm' && github.event_name == 'push'
 

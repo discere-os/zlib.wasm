@@ -183,15 +183,21 @@ jobs:
 
       - name: Set snapshot version
         id: version
-        run: echo "VERSION=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "VERSION=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
-      - name: Calculate SHA-256
-        id: sha
+      - name: Calculate SHA-256 and generate metadata
+        id: metadata
         run: |
           WASM_FILE="install/wasm/zlib-side.wasm"
           SHA=$(sha256sum "$WASM_FILE" | awk '{print $1}')
+          SIZE=$(stat -c%s "$WASM_FILE")
+
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "size=${SIZE}" >> $GITHUB_OUTPUT
           echo "${SHA}" > "${WASM_FILE}.sha256"
+
+          echo "🔒 SHA-256: ${SHA}"
+          echo "📦 Size: $((SIZE / 1024)) KB"
 
       - name: Deploy snapshot to Cloudflare R2
         run: |

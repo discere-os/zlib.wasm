@@ -20,7 +20,7 @@ jobs:
     name: Build SIDE Module
     runs-on: [self-hosted, docker, wasm, emscripten]
     container:
-      image: ghcr.io/discere-os/wasm-builder:minimal
+      image: ghcr.io/discere-os/wasm-builder:main
 
     steps:
       - name: Checkout repository
@@ -152,6 +152,8 @@ EOF
   deploy:
     name: Deploy to R2
     runs-on: [self-hosted, docker, wasm, emscripten]
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main
     needs: [build]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 

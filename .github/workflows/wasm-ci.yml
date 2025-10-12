@@ -183,7 +183,7 @@ jobs:
 
       - name: Set snapshot version
         id: version
-        run: echo "VERSION=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=sha-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Calculate SHA-256 and generate metadata
         id: metadata

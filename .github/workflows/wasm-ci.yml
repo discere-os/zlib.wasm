@@ -134,25 +134,24 @@ jobs:
           echo "🔒 SHA-256: ${SHA}"
 
       - name: Deploy to Cloudflare R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            VERSION="${{ steps.release-version.outputs.VERSION }}"
-            SHA="${{ steps.sha.outputs.sha }}"
+        run: |
+          VERSION="${{ steps.release-version.outputs.VERSION }}"
+          SHA="${{ steps.sha.outputs.sha }}"
 
-            # Deploy to versioned path (immutable)
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
-              --file=install/wasm/zlib-side.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
+          # Deploy to versioned path (immutable)
+          wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+            --file=install/wasm/zlib-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
 
-            # Deploy to SHA path (content-addressable)
-            r2 object put discere-os-wasm-production/zlib/sha-${SHA:0:7}/zlib-side.wasm \
-              --file=install/wasm/zlib-side.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
+          # Deploy to SHA path (content-addressable)
+          wrangler r2 object put discere-os-wasm-production/zlib/sha-${SHA:0:7}/zlib-side.wasm \
+            --file=install/wasm/zlib-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Verify deployment
         run: |
@@ -195,14 +194,13 @@ jobs:
           echo "${SHA}" > "${WASM_FILE}.sha256"
 
       - name: Deploy snapshot to Cloudflare R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            VERSION="${{ steps.version.outputs.VERSION }}"
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
 
-            r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
-              --file=install/wasm/zlib-side.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
+          wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+            --file=install/wasm/zlib-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

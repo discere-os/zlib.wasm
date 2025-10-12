@@ -48,15 +48,25 @@ jobs:
           elif [[ -x ./build-wasm.sh ]]; then
             ./build-wasm.sh
           else
-            echo "❌ No build script found (build-dual.sh or build-wasm.sh)"
-            exit 1
+            deno task build:wasm
           fi
 
-          # Verify output
-          WASM_FILE="install/lib/${PKG}-side.wasm"
+      - name: Fix artifact permissions
+        run: |
+          # Ensure artifacts are readable (files created as root in container)
+          chown -R $(id -u):$(id -g) install/ 2>/dev/null || true
+          chmod -R u+rw,go+r install/
+
+      - name: Verify and extract build info
+        id: verify
+        run: |
+          PKG="${{ steps.package.outputs.name }}"
+
+          # Verify output exists
+          WASM_FILE="install/wasm/${PKG}-side.wasm"
           if [[ ! -f "$WASM_FILE" ]]; then
             echo "❌ Build failed: $WASM_FILE not found"
-            ls -la install/lib/ || true
+            ls -laR install/ || true
             exit 1
           fi
 
@@ -65,12 +75,12 @@ jobs:
 
           echo "file=${WASM_FILE}" >> $GITHUB_OUTPUT
           echo "size=${SIZE}" >> $GITHUB_OUTPUT
-          echo "✅ Built: ${WASM_FILE} (${SIZE_KB} KB)"
+          echo "✅ Verified: ${WASM_FILE} (${SIZE_KB} KB)"
 
       - name: Calculate SHA-256
         id: sha
         run: |
-          WASM_FILE="${{ steps.build.outputs.file }}"
+          WASM_FILE="${{ steps.verify.outputs.file }}"
           SHA=$(sha256sum "$WASM_FILE" | awk '{print $1}')
 
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
@@ -101,14 +111,14 @@ jobs:
       - name: Generate manifest
         run: |
           PKG="${{ steps.package.outputs.name }}"
-          WASM_FILE="${{ steps.build.outputs.file }}"
+          WASM_FILE="${{ steps.verify.outputs.file }}"
 
           cat > "${WASM_FILE%/*}/manifest.json" <<EOF
 {
   "name": "${PKG}",
   "version": "${{ steps.version.outputs.version }}",
   "sha256": "${{ steps.sha.outputs.sha }}",
-  "size": ${{ steps.build.outputs.size }},
+  "size": ${{ steps.verify.outputs.size }},
   "repository": "${{ github.repository }}",
   "commit": "${{ github.sha }}",
   "build_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -126,7 +136,7 @@ EOF
       - name: Build summary
         run: |
           PKG="${{ steps.package.outputs.name }}"
-          SIZE_KB=$((${{ steps.build.outputs.size }} / 1024))
+          SIZE_KB=$((${{ steps.verify.outputs.size }} / 1024))
 
           echo "## 📦 Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -143,9 +153,9 @@ EOF
         with:
           name: ${{ steps.package.outputs.name }}-side-module
           path: |
-            ${{ steps.build.outputs.file }}
-            ${{ steps.build.outputs.file }}.sha256
-            install/lib/manifest.json
+            ${{ steps.verify.outputs.file }}
+            ${{ steps.verify.outputs.file }}.sha256
+            install/wasm/manifest.json
           retention-days: 30
           if-no-files-found: error
 

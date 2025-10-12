@@ -52,6 +52,12 @@ jobs:
       - name: Build WASM modules
         run: deno task build:wasm
 
+      - name: Fix artifact permissions
+        run: |
+          # Ensure artifacts are readable by runner (files created as root in container)
+          sudo chown -R $(id -u):$(id -g) install/ || chown -R $(id -u):$(id -g) install/
+          chmod -R u+rw,go+r install/
+
       - name: Generate WASM Build Summary
         run: |
           echo "# 📦 WASM Build Results" >> $GITHUB_STEP_SUMMARY
@@ -92,6 +98,8 @@ jobs:
     runs-on: [self-hosted, docker, wasm, emscripten]
     needs: [build]
     if: startsWith(github.ref, 'refs/tags/v')
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main
 
     steps:
       - name: Checkout code
@@ -149,6 +157,8 @@ jobs:
     runs-on: [self-hosted, docker, wasm, emscripten]
     needs: [build]
     if: github.ref == 'refs/heads/wasm' && github.event_name == 'push'
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main
 
     steps:
       - name: Checkout code

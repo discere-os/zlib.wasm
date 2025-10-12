@@ -140,12 +140,14 @@ jobs:
 
           # Deploy to versioned path (immutable)
           wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+            --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \
             --cache-control="public, max-age=31536000, immutable"
 
           # Deploy to SHA path (content-addressable)
           wrangler r2 object put discere-os-wasm-production/zlib/sha-${SHA:0:7}/zlib-side.wasm \
+            --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \
             --cache-control="public, max-age=31536000, immutable"
@@ -204,6 +206,7 @@ jobs:
           VERSION="${{ steps.version.outputs.VERSION }}"
 
           wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+            --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \
             --cache-control="public, max-age=31536000, immutable"

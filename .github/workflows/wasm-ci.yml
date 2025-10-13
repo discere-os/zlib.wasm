@@ -138,15 +138,16 @@ jobs:
           VERSION="${{ steps.release-version.outputs.VERSION }}"
           SHA="${{ steps.sha.outputs.sha }}"
 
-          # Deploy to versioned path (immutable)
-          wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+          # Deploy SIDE_MODULE to versioned path (immutable)
+          # Pattern: /zlib@v1.4.2/side.wasm (not repeating .wasm in library name)
+          wrangler r2 object put discere-os-wasm-production/zlib@${VERSION}/side.wasm \
             --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \
             --cache-control="public, max-age=31536000, immutable"
 
           # Deploy to SHA path (content-addressable)
-          wrangler r2 object put discere-os-wasm-production/zlib/sha-${SHA:0:7}/zlib-side.wasm \
+          wrangler r2 object put discere-os-wasm-production/zlib@sha-${SHA:0:7}/side.wasm \
             --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \
@@ -159,7 +160,7 @@ jobs:
         run: |
           sleep 15
           VERSION="${{ steps.release-version.outputs.VERSION }}"
-          curl -I "https://wasm.discere.cloud/zlib/${VERSION}/zlib-side.wasm" || exit 1
+          curl -I "https://wasm.discere.cloud/zlib@${VERSION}/side.wasm" || exit 1
           echo "✅ Cloudflare R2 deployment verified"
 
   deploy-cloudflare-snapshot:
@@ -205,7 +206,10 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
 
-          wrangler r2 object put discere-os-wasm-production/zlib/${VERSION}/zlib-side.wasm \
+          # Deploy SIDE_MODULE only (MAIN_MODULE for testing/NPM only)
+          # Pattern: /zlib@sha-abc123/side.wasm
+          # CDN URL: wasm.discere.cloud/zlib@sha-abc123/side.wasm
+          wrangler r2 object put discere-os-wasm-production/zlib@${VERSION}/side.wasm \
             --remote \
             --file=install/wasm/zlib-side.wasm \
             --content-type=application/wasm \

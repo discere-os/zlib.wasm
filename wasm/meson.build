@@ -17,6 +17,7 @@ main_link_args = [
   '-sNO_FILESYSTEM=1',
   '-sEXPORTED_RUNTIME_METHODS=["cwrap","ccall","UTF8ToString","getValue","setValue","HEAPU8","HEAP32","HEAPU32"]',
   '-sEXPORTED_FUNCTIONS=["_malloc","_free"]',
+  '-msimd128',
   '-O3','-flto',
 ]
 
@@ -31,7 +32,7 @@ executable('zlib-main',
 
 side_link_args = [
   '-sSIDE_MODULE=2',
-  '-fPIC','-O3','-flto',
+  '-fPIC','-msimd128','-O3','-flto',
 ]
 
 shared_module('zlib-side',

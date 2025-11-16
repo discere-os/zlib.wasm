@@ -7,6 +7,10 @@
 
 #include "zutil.h"
 
+#ifdef __EMSCRIPTEN__
+#include "wasm/web_native_simd_checksums.h"
+#endif
+
 #define BASE 65521U     /* largest prime smaller than 65536 */
 #define NMAX 5552
 /* NMAX is the largest n such that 255n(n+1)/2 + (n+1)(BASE-1) <= 2^32-1 */
@@ -126,7 +130,12 @@ uLong ZEXPORT adler32_z(uLong adler, const Bytef *buf, z_size_t len) {
 
 /* ========================================================================= */
 uLong ZEXPORT adler32(uLong adler, const Bytef *buf, uInt len) {
+#if defined(__EMSCRIPTEN__) && defined(__wasm_simd128__)
+    /* Use SIMD-optimized version for WebAssembly with SIMD support */
+    return simd_adler32(adler, buf, len);
+#else
     return adler32_z(adler, buf, len);
+#endif
 }
 
 /* ========================================================================= */

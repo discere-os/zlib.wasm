@@ -3,7 +3,9 @@ zlib_wasm_cargs = ['-msimd128', '-DUSE_WEB_NATIVE_POSIX=1']
 sources_core = files(
   '../adler32.c','../compress.c','../crc32.c','../deflate.c','../infback.c','../inffast.c','../inflate.c','../inftrees.c','../trees.c','../uncompr.c','../zutil.c',
   '../gzlib.c','../gzread.c','../gzwrite.c','../gzclose.c',
-  'web_native_posix.c'
+  'web_native_posix.c',
+  'web_native_simd_checksums.c',
+  'inffast_simd.c'
 )
 
 inc = include_directories('..')

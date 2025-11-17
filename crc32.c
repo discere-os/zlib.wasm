@@ -9,6 +9,10 @@
 
 /* @(#) $Id$ */
 
+#ifdef __EMSCRIPTEN__
+#include "wasm/web_native_simd_checksums.h"
+#endif
+
 /*
   Note on the use of DYNAMIC_CRC_TABLE: there is no mutex or semaphore
   protection on the static variables used to control the first-use generation
@@ -1014,7 +1018,12 @@ unsigned long ZEXPORT crc32_z(unsigned long crc, const unsigned char FAR *buf,
 /* ========================================================================= */
 unsigned long ZEXPORT crc32(unsigned long crc, const unsigned char FAR *buf,
                             uInt len) {
+#if defined(__EMSCRIPTEN__) && defined(__wasm_simd128__)
+    /* Use SIMD-optimized version for WebAssembly with SIMD support */
+    return simd_crc32(crc, buf, len);
+#else
     return crc32_z(crc, buf, len);
+#endif
 }
 
 /* ========================================================================= */
